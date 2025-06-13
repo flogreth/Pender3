@@ -93,7 +93,8 @@ def px_to_mm(x_px, y_px):
 class SVGFontApp:
     def __init__(self, root):
         self.root = root
-        
+        self.show_help = 1
+         
         self.canvas = tk.Canvas(root, bg='black')
         self.canvas.pack(fill='both', expand=True)
 
@@ -107,26 +108,30 @@ class SVGFontApp:
         # Dropdown (Combobox)
         com_var = tk.StringVar()
         com_dropdown = ttk.Combobox(root, textvariable=com_var, state="readonly")
-        com_dropdown.place(x=80, y=screen_size_y-250)
+        com_dropdown.place(x=70, y=70, width=120)
 
         # Button zum Aktualisieren
         refresh_button = ttk.Button(root, text="Refresh", command=self.refresh_ports)
-        refresh_button.place(x=120, y=screen_size_y-250)
+        refresh_button.place(x=200, y=70, width=120)
+
 
         # Text Object Button
         btn = tk.Button(root, text="Neues Textobjekt", command=self.add_text_object)
-        btn.place(x=80, y=screen_size_y-100)
-
+        btn.place(x=420, y=70, width=120)
 
         btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
-        btn2.place(x=80, y=screen_size_y-150)
+        btn2.place(x=570, y=70, width=120)
+
+        # Help Button
+        btn = tk.Button(root, text="Hilfe", command=self.hide_show_help)
+        btn.place(x=720, y=70, width=120)
 
         self.text_bboxes = []
         self.calibration_mode = False
         self.text_objects = [{
             "type": "text",
             "text": "TINKERTANK",
-            "font": 0,
+            "font": 23,
             "offset_x": 120,
             "offset_y": 400,
             "scale": 0.1,
@@ -154,6 +159,10 @@ class SVGFontApp:
         self.calib_offset_y = 0
 
         self.canvas.bind_all("<Key>", self.on_key)
+        self.render()
+
+    def hide_show_help(self):
+        self.show_help = 1-self.show_help
         self.render()
 
     def get_com_ports(self):
@@ -260,7 +269,7 @@ class SVGFontApp:
         self.text_objects.append({
             "type": "text",
             "text": "Text",
-            "font": 0,
+            "font": 23,
             "offset_x": 100,
             "offset_y": 100 + len(self.text_objects) * 100,
             "scale": 0.1,
@@ -314,13 +323,14 @@ class SVGFontApp:
             rendercolor = "white"
 
         # HELP TEXT
-        self.canvas.create_text(70*self.calib_scale_x + self.calib_offset_x, 70*self.calib_scale_y + self.calib_offset_y,
-            text=f"{connection_status}\n"
-            "Pfeiltasten : \tVerschieben \n"
-            "Shift+Pfeiltasten : \tSkalieren \n"
-            "Strg+H : \t\tAuto Home\n"
-            "Strg+K : \t\tCalibration Mode\n"
-            "Bild↑ / Bild↓ : \tSchriftart wählen:"+self.svg_fonts[self.svg_font_index], font=("Arial", 12), fill=rendercolor, anchor="nw")
+        if self.show_help:
+            self.canvas.create_text(720,110,
+                text=f"{connection_status}\n"
+                "Pfeiltasten : \tVerschieben \n"
+                "Shift+Pfeiltasten : \tSkalieren \n"
+                "Strg+H : \t\tAuto Home\n"
+                "Strg+K : \t\tCalibration Mode\n"
+                "Bild↑ / Bild↓ : \tSchriftart wählen", font=("Arial", 12), fill=rendercolor, anchor="nw")
 
         coords = [
             50 * self.calib_scale_x + self.calib_offset_x,
@@ -392,7 +402,7 @@ class SVGFontApp:
             if i == self.number_textobjects:
                 self.canvas.create_rectangle(min_x-10, min_y-10, max_x+10, max_y+10, outline="yellow", width=2, dash=(2, 2))
                 self.canvas.create_rectangle(max_x+3, min_y-3, max_x+17, min_y-17, fill="yellow", width=0)
-                self.canvas.create_text(max_x+10, max_y+10, text= self.svg_fonts[self.text_objects[i]["font"]] , font=("Arial", 12), fill="yellow", anchor="ne") # show font
+                self.canvas.create_text(max_x+10, max_y+10, text=str(self.text_objects[i]["font"])+": "+ self.svg_fonts[self.text_objects[i]["font"]] , font=("Arial", 12), fill="yellow", anchor="ne") # show font
 
 
     def on_key(self, event):
