@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog
 import xml.etree.ElementTree as ET
 import re
@@ -9,6 +10,10 @@ from svg.path import parse_path as svg_parse_path
 from svg.path.path import Move, Line, CubicBezier, QuadraticBezier, Close
 
 from pathlib import Path
+import serial.tools.list_ports
+
+
+
 
 
 
@@ -83,6 +88,8 @@ def px_to_mm(x_px, y_px):
     y_mm = y_px * scale_y + offset_y
     return x_mm, y_mm
 
+
+
 class SVGFontApp:
     def __init__(self, root):
         self.root = root
@@ -97,11 +104,22 @@ class SVGFontApp:
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
 
+        # Dropdown (Combobox)
+        com_var = tk.StringVar()
+        com_dropdown = ttk.Combobox(root, textvariable=com_var, state="readonly")
+        com_dropdown.place(x=80, y=screen_size_y-250)
+
+        # Button zum Aktualisieren
+        refresh_button = ttk.Button(root, text="Refresh", command=self.refresh_ports)
+        refresh_button.place(x=120, y=screen_size_y-250)
+
+        # Text Object Button
         btn = tk.Button(root, text="Neues Textobjekt", command=self.add_text_object)
-        btn.place(x=120, y=screen_size_y-150)
+        btn.place(x=80, y=screen_size_y-100)
+
 
         btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
-        btn2.place(x=320, y=screen_size_y-150)
+        btn2.place(x=80, y=screen_size_y-150)
 
         self.text_bboxes = []
         self.calibration_mode = False
@@ -137,7 +155,16 @@ class SVGFontApp:
 
         self.canvas.bind_all("<Key>", self.on_key)
         self.render()
-    
+
+    def get_com_ports(self):
+        ports = serial.tools.list_ports.comports()
+        return [port.device for port in ports]
+
+    def refresh_ports(self):
+        ports = get_com_ports()
+        com_var.set('')  # Auswahl zurücksetzen
+        com_dropdown['values'] = ports
+
     def load_glyphs_from_svg_font(self,file_path):
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -232,7 +259,7 @@ class SVGFontApp:
     def add_text_object(self):
         self.text_objects.append({
             "type": "text",
-            "text": "NEU",
+            "text": "Text",
             "font": 0,
             "offset_x": 100,
             "offset_y": 100 + len(self.text_objects) * 100,
@@ -245,6 +272,9 @@ class SVGFontApp:
     def write_with_pen(self):
         for obj in self.text_objects:
             x_cursor = obj["offset_x"]
+
+            self.glyphs = self.load_glyphs_from_svg_font(self.svg_fonts[self.text_objects[i]["font"]])
+
             for char in obj["text"]:
                 glyph = self.glyphs.get(char)
                 if glyph:
@@ -275,7 +305,7 @@ class SVGFontApp:
 
     def render(self):
 
-        self.glyphs = self.load_glyphs_from_svg_font(self.svg_fonts[self.svg_font_index])
+
         self.canvas.delete("all")
         if self.calibration_mode == True:
             rendercolor = "red"
@@ -283,7 +313,7 @@ class SVGFontApp:
         else:
             rendercolor = "white"
 
-        
+        # HELP TEXT
         self.canvas.create_text(70*self.calib_scale_x + self.calib_offset_x, 70*self.calib_scale_y + self.calib_offset_y,
             text=f"{connection_status}\n"
             "Pfeiltasten : \tVerschieben \n"
@@ -310,8 +340,7 @@ class SVGFontApp:
             if obj["type"] == "text":
                 # ==== TEXT RENDERING CODE ====
                 x_cursor = obj["offset_x"]
-
-
+                self.glyphs = self.load_glyphs_from_svg_font(self.svg_fonts[self.text_objects[i]["font"]])
                 for char in obj["text"]:
                     glyph = self.glyphs.get(char)
                     if glyph:
@@ -359,12 +388,12 @@ class SVGFontApp:
                         max_y = max(max_y, sy)
                 self.text_bboxes.append((min_x, min_y, max_x, max_y))
 
-            ####BOUNDING BOXES
+            ####BOUNDING BOXES and INFO
             if i == self.number_textobjects:
                 self.canvas.create_rectangle(min_x-10, min_y-10, max_x+10, max_y+10, outline="yellow", width=2, dash=(2, 2))
                 self.canvas.create_rectangle(max_x+3, min_y-3, max_x+17, min_y-17, fill="yellow", width=0)
-                self.canvas.create_text(max_x+10, max_y+10, text="font:"+self.svg_fonts[self.svg_font_index]+"  "+str(self.text_objects[self.current_index]["font"]) , font=("Arial", 12), fill="yellow", anchor="nw")
-    
+                self.canvas.create_text(max_x+10, max_y+10, text= self.svg_fonts[self.text_objects[i]["font"]] , font=("Arial", 12), fill="yellow", anchor="ne") # show font
+
 
     def on_key(self, event):
         obj = self.text_objects[self.number_textobjects]
@@ -436,11 +465,11 @@ class SVGFontApp:
                 self.number_textobjects = max(0, self.number_textobjects - 1)
                 self.render()
         elif event.keysym == "Prior":  # Page Up
-            self.svg_font_index =(self.svg_font_index+1) % len(self.svg_fonts)
+            self.text_objects[self.current_index]["font"] = ( self.text_objects[self.current_index]["font"] +1 ) % len(self.svg_fonts)
             self.render()
 
         elif event.keysym == "Next":  # Page Down
-            self.svg_font_index =(self.svg_font_index-1) % len(self.svg_fonts)
+            self.text_objects[self.current_index]["font"] = ( self.text_objects[self.current_index]["font"] -1 ) % len(self.svg_fonts)
             self.render()
 
     def start_homing(self):
