@@ -13,10 +13,6 @@ from pathlib import Path
 import serial.tools.list_ports
 
 
-
-
-
-
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
 screen_size_x = 1920
