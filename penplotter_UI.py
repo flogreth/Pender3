@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import re
 import time
 import serial
+import keyboard
 from svgpathtools import svg2paths
 from svg.path import parse_path as svg_parse_path
 from svg.path.path import Move, Line, CubicBezier, QuadraticBezier, Close
@@ -21,13 +22,17 @@ screen_size_y = 1080
 print_area = [25, 25, 240, 180]
 neutralposition = 160
 connection_status = ""
+connection_color = "red"
+
 
 try:
     ser = serial.Serial('COM4', 115200, timeout=1)
     time.sleep(2)
 except Exception as e:
+    ser=""
     connection_status = e
     print(f"Fehler: {e}")
+
 
 
 
@@ -66,7 +71,7 @@ def send_commands(commands):
     if isinstance(commands, str):
         commands = [commands]
     for cmd in commands:
-        print(cmd)
+        print("CMD:", cmd)
         ser.write(f'{cmd}\n'.encode())
         while True:
             response = ser.readline().decode().strip()
@@ -94,6 +99,7 @@ class SVGFontApp:
         self.canvas = tk.Canvas(root, bg='black')
         self.canvas.pack(fill='both', expand=True)
 
+
         # MOUSE
         self.dragging = False
         self.drag_start = None
@@ -102,9 +108,10 @@ class SVGFontApp:
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
 
         # Dropdown (Combobox)
-        com_var = tk.StringVar()
-        com_dropdown = ttk.Combobox(root, textvariable=com_var, state="readonly")
-        com_dropdown.place(x=70, y=70, width=120)
+        self.com_var = tk.StringVar()
+        self.com_dropdown = ttk.Combobox(root, textvariable=self.com_var, state="readonly")
+        self.com_dropdown.place(x=70, y=70, width=120)
+        self.com_dropdown.bind("<<ComboboxSelected>>", self.reconnect_com)
 
         # Button zum Aktualisieren
         refresh_button = ttk.Button(root, text="Refresh", command=self.refresh_ports)
@@ -115,8 +122,9 @@ class SVGFontApp:
         btn = tk.Button(root, text="Neues Textobjekt", command=self.add_text_object)
         btn.place(x=420, y=70, width=120)
 
-        btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
-        btn2.place(x=570, y=70, width=120)
+        # LOAD SVG BUTTON
+        #btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
+        #btn2.place(x=570, y=70, width=120)
 
         # Help Button
         btn = tk.Button(root, text="Hilfe", command=self.hide_show_help)
@@ -138,7 +146,7 @@ class SVGFontApp:
         fonts_dir = Path("fonts")
         self.svg_fonts = [str(p) for p in fonts_dir.iterdir() if p.is_file() and p.suffix == ".svg"]
         self.svg_font_index = 0
-        print(self.svg_fonts)
+        #print(self.svg_fonts)
 
 
 
@@ -157,6 +165,20 @@ class SVGFontApp:
         self.canvas.bind_all("<Key>", self.on_key)
         self.render()
 
+    def reconnect_com(self, event):
+        global ser, connection_status, connection_color
+        try:
+            time.sleep(0.2)
+            ser = serial.Serial(self.com_var.get(), 115200, timeout=1)
+            time.sleep(0.3)
+            connection_status = "connected to " + self.com_var.get()
+            connection_color = "lime"
+        except Exception as e:
+            connection_status = e
+            connection_color = "red"
+            print(f"Fehler: {e}")
+        self.render()
+
     def hide_show_help(self):
         self.show_help = 1-self.show_help
         self.render()
@@ -166,9 +188,16 @@ class SVGFontApp:
         return [port.device for port in ports]
 
     def refresh_ports(self):
-        ports = get_com_ports()
-        com_var.set('')  # Auswahl zurücksetzen
-        com_dropdown['values'] = ports
+        ports = self.get_com_ports()
+        self.com_dropdown['values'] = ports  # Neue Liste eintragen
+        if ports:
+            self.com_var.set(ports[0])  # Ersten Port automatisch auswählen
+        else:
+            self.com_var.set('')  # Kein Port gefunden, leeren
+        try:
+            ser.close()
+        except: pass
+        self.reconnect_com(ports[0])
 
     def load_glyphs_from_svg_font(self,file_path):
         tree = ET.parse(file_path)
@@ -275,41 +304,47 @@ class SVGFontApp:
         self.render()
 
     def write_with_pen(self):
-        for obj in self.text_objects:
-            x_cursor = obj["offset_x"]
+        if ser != "":
+            for i, obj in enumerate(self.text_objects):
+            
+                x_cursor = obj["offset_x"]
 
-            self.glyphs = self.load_glyphs_from_svg_font(self.svg_fonts[self.text_objects[i]["font"]])
+                self.glyphs = self.load_glyphs_from_svg_font(self.svg_fonts[self.text_objects[i]["font"]])
 
-            for char in obj["text"]:
-                glyph = self.glyphs.get(char)
-                if glyph:
-                    path = parse_path(glyph["d"])
-                    last_pos = None
-                    for cmd, x, y in path:
-                        sx, sy = px_to_mm((x_cursor + x * obj["scale"]), (obj["offset_y"] - y * obj["scale"] * obj["scale_y"]))
-                        if cmd == "M":
-                            gcode_lines = [
-                                'G1 Z8 F22000',
-                                f'G0 X{sx:.2f} Y{sy:.2f} F4000'
-                            ]
-                        elif cmd == "L" and last_pos:
-                            gcode_lines = [
-                                'G1 Z1 F22000',
-                                f'G1 X{sx:.2f} Y{sy:.2f} F4000'
-                            ]
-                        else:
-                            gcode_lines = []
-                        send_commands(gcode_lines)
-                        last_pos = (sx, sy)
-                    x_cursor += glyph["horiz-adv-x"] * obj["scale"]
-            send_commands([
-                'G0 Z15',
-                f'G0 X0 Y{neutralposition} Z20'
-            ])
-        print("G-Code erfolgreich gesendet.")
+                for char in obj["text"]:
+                    print("char: ", char)
+                    if char == " ":
+                        x_cursor += 300 * obj["scale"]
+                    else:
+                        glyph = self.glyphs.get(char)
+                        if glyph:
+                            path = parse_path(glyph["d"])
+                            last_pos = None
+                            for cmd, x, y in path:
+                                sx, sy = px_to_mm((x_cursor + x * obj["scale"]), (obj["offset_y"] - y * obj["scale"] * obj["scale_y"]))
+                                if cmd == "M":
+                                    gcode_lines = [
+                                        'G1 Z8 F22000',
+                                        f'G0 X{sx:.2f} Y{sy:.2f} F4000'
+                                    ]
+                                elif cmd == "L" and last_pos:
+                                    gcode_lines = [
+                                        'G1 Z1 F22000',
+                                        f'G1 X{sx:.2f} Y{sy:.2f} F4000'
+                                    ]
+                                else:
+                                    gcode_lines = []
+                                send_commands(gcode_lines)
+                                last_pos = (sx, sy)
+                            x_cursor += glyph["horiz-adv-x"] * obj["scale"]
+                send_commands([
+                    'G0 Z15',
+                    f'G0 X0 Y{neutralposition} Z20'
+                ])
+            print("G-Code erfolgreich gesendet.")
 
     def render(self):
-
+        global connection_color, connection_status
 
         self.canvas.delete("all")
         if self.calibration_mode == True:
@@ -318,11 +353,12 @@ class SVGFontApp:
         else:
             rendercolor = "white"
 
+        self.canvas.create_text(70,110,text=f"{connection_status}\n" ,font=("Arial", 12), fill= connection_color, anchor="nw")
+
         # HELP TEXT
         if self.show_help:
             self.canvas.create_text(720,110,
-                text=f"{connection_status}\n"
-                "Pfeiltasten : \tVerschieben \n"
+                text=f"Pfeiltasten : \tVerschieben \n"
                 "Shift+Pfeiltasten : \tSkalieren \n"
                 "Strg+H : \t\tAuto Home\n"
                 "Strg+K : \t\tCalibration Mode\n"
@@ -402,10 +438,11 @@ class SVGFontApp:
 
 
     def on_key(self, event):
+        print("textobjects:", self.number_textobjects)
         obj = self.text_objects[self.number_textobjects]
 
         if (event.state & 0x0004) and event.keysym.lower() == "h":
-            self.start_homing()
+            self.start_homing(1)
         if (event.state & 0x0004) and event.keysym.lower() == "r":
             self.drive_rect()
         if (event.state & 0x0004) and event.keysym.lower() == "k":
@@ -464,6 +501,7 @@ class SVGFontApp:
             self.render()
         elif event.keysym == "Return":
             print("stift gepitzt und los gehts...")
+            #self.start_homing(0)
             self.write_with_pen()
         elif event.keysym == "Delete":
             if 0 <= self.number_textobjects < len(self.text_objects):
@@ -478,16 +516,16 @@ class SVGFontApp:
             self.text_objects[self.current_index]["font"] = ( self.text_objects[self.current_index]["font"] -1 ) % len(self.svg_fonts)
             self.render()
 
-    def start_homing(self):
+    def start_homing(self, drive_to_neutralpos):
         homing_commands = [
             'G0 Z20',
             'M203',
             'G28 XY',
-            'G0 X25 Y200',
+            'G0 X25 Y20',
             'G92 Z100',
             'G28 Z',
             'G0 Z10',
-            f'G0 X25 Y{neutralposition}',
+            f'G0 X25 Y{neutralposition*drive_to_neutralpos}',
         ]
         send_commands(homing_commands)
 
@@ -500,6 +538,10 @@ class SVGFontApp:
         ]
         send_commands(calib_commands)
         send_commands(f'G0 X0 Y{neutralposition}')
+    
+        time.sleep(2)
+        self.reconnect_com()
+        
 
 if __name__ == "__main__":
     
@@ -510,4 +552,5 @@ if __name__ == "__main__":
     screen_size_x = root.winfo_width()
     screen_size_y = root.winfo_height()
     app = SVGFontApp(root)
+
     root.mainloop()
