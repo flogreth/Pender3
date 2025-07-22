@@ -95,10 +95,12 @@ class SVGFontApp:
     def __init__(self, root):
         self.root = root
         self.show_help = 1
+        self.abort = 0
          
         self.canvas = tk.Canvas(root, bg='black')
         self.canvas.pack(fill='both', expand=True)
 
+        
 
         # MOUSE
         self.dragging = False
@@ -123,8 +125,8 @@ class SVGFontApp:
         btn.place(x=420, y=70, width=120)
 
         # LOAD SVG BUTTON
-        #btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
-        #btn2.place(x=570, y=70, width=120)
+        btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
+        btn2.place(x=570, y=70, width=120)
 
         # Help Button
         btn = tk.Button(root, text="Hilfe", command=self.hide_show_help)
@@ -304,6 +306,8 @@ class SVGFontApp:
         self.render()
 
     def write_with_pen(self):
+
+
         if ser != "":
             for i, obj in enumerate(self.text_objects):
             
@@ -313,6 +317,10 @@ class SVGFontApp:
 
                 for char in obj["text"]:
                     print("char: ", char)
+                    if self.abort == 1:
+                        print("DRUCK WIRD ABGEBROCHEN")
+                        self.abort = 0
+                        break
                     if char == " ":
                         x_cursor += 300 * obj["scale"]
                     else:
@@ -336,6 +344,7 @@ class SVGFontApp:
                                     gcode_lines = []
                                 send_commands(gcode_lines)
                                 last_pos = (sx, sy)
+                                
                             x_cursor += glyph["horiz-adv-x"] * obj["scale"]
                 send_commands([
                     'G0 Z15',
@@ -448,6 +457,9 @@ class SVGFontApp:
         if (event.state & 0x0004) and event.keysym.lower() == "k":
             self.calibration_mode = not self.calibration_mode
             self.render()
+        
+        if event.keysym == "Escape":
+            self.abort = 1
 
         if not self.calibration_mode:
             if event.keysym in ["Left", "Right", "Up", "Down"]:
