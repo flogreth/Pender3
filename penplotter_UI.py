@@ -125,7 +125,7 @@ class SVGFontApp:
         btn.place(x=420, y=70, width=120)
 
         # LOAD SVG BUTTON
-        btn2 = tk.Button(root, text="SVG laden", command=self.load_svg_object)
+        btn2 = tk.Button(root, text="Tinkertank Logo", command=self.load_svg_object)
         btn2.place(x=570, y=70, width=120)
 
         # Help Button
@@ -217,39 +217,6 @@ class SVGFontApp:
                     }
         return glyphs
 
-    def load_svg_object(self):
-        file_path = filedialog.askopenfilename(filetypes=[("SVG-Dateien", "*.svg")])
-        if not file_path:
-            return
-
-        try:
-            tree = ET.parse(file_path)
-            root = tree.getroot()
-            paths = []
-            print("paths: ",paths, root)
-
-            for elem in root.iter():
-                print(elem)
-                if elem.tag == SVG_NS + "path" and 'd' in elem.attrib:
-                    paths.append(elem.attrib['d'])
-                
-
-            if paths:
-                self.text_objects.append({
-                    "type": "image",
-                    "text": "lol",
-                    "paths": paths,
-                    "offset_x": 200,
-                    "offset_y": 400,
-                    "scale": 1,
-                    "scale_y": 1
-                })
-                self.render()
-        except Exception as e:
-            import traceback
-            print(f"Fehler beim Laden der SVG-Datei: {e}")
-            traceback.print_exc()
-
     def on_mouse_down(self, event):
         x, y = event.x, event.y
         self.current_index = 100
@@ -300,6 +267,19 @@ class SVGFontApp:
             "offset_x": 100,
             "offset_y": 100 + len(self.text_objects) * 100,
             "scale": 0.1,
+            "scale_y": 1,
+        })
+        self.number_textobjects = len(self.text_objects) - 1
+        self.render()
+
+    def load_svg_object(self):
+        self.text_objects.append({
+            "type": "text",
+            "text": "A",
+            "font": 40,
+            "offset_x": 500,
+            "offset_y": 500,
+            "scale": 0.5,
             "scale_y": 1,
         })
         self.number_textobjects = len(self.text_objects) - 1
