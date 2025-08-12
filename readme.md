@@ -12,7 +12,7 @@ https://github.com/user-attachments/assets/80e76856-10f3-4a94-aac6-b2c9275bfc37
 
 - ender 3
 - laptop (or raspi)
-- cheap (projector)[https://www.otto.de/p/diyarts-kinder-beamer-mini-beamer-hd-aufloesung-integrierten-lautsprechern-ir-fernbedienung-S0BDJ0CZ/#ech=29250510&variationId=S0BDJ0CZM4HS]
+- cheap [projector](https://www.otto.de/p/diyarts-kinder-beamer-mini-beamer-hd-aufloesung-integrierten-lautsprechern-ir-fernbedienung-S0BDJ0CZ/#ech=29250510&variationId=S0BDJ0CZM4HS)
 - 3d printed pen plotter head (i modified [this one](https://github.com/AndrewSink/pltr_toolhead) )
 
 ## custom icon font 
