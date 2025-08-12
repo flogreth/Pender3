@@ -145,7 +145,7 @@ class SVGFontApp:
         }]
         self.number_textobjects = 0
 
-        fonts_dir = Path("fonts")
+        fonts_dir = Path(__file__).parent / "fonts"
         self.svg_fonts = [str(p) for p in fonts_dir.iterdir() if p.is_file() and p.suffix == ".svg"]
         self.svg_font_index = 0
         #print(self.svg_fonts)
