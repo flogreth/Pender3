@@ -147,6 +147,7 @@ class SVGFontApp:
 
         fonts_dir = Path(__file__).parent / "fonts"
         self.svg_fonts = [str(p) for p in fonts_dir.iterdir() if p.is_file() and p.suffix == ".svg"]
+        
         self.svg_font_index = 0
         #print(self.svg_fonts)
 
@@ -423,13 +424,11 @@ class SVGFontApp:
             if i == self.number_textobjects:
                 self.canvas.create_rectangle(min_x-10, min_y-10, max_x+10, max_y+10, outline="yellow", width=2, dash=(2, 2))
                 self.canvas.create_rectangle(max_x+3, min_y-3, max_x+17, min_y-17, fill="yellow", width=0)
-                self.canvas.create_text(max_x+10, max_y+10, text=str(self.text_objects[i]["font"])+": "+ self.svg_fonts[self.text_objects[i]["font"]] , font=("Arial", 12), fill="yellow", anchor="ne") # show font
+                self.canvas.create_text(max_x+10, max_y+10, text=str(self.text_objects[i]["font"])+": "+ Path(self.svg_fonts[self.text_objects[i]["font"]]).name , font=("Arial", 12), fill="yellow", anchor="ne") # show font
 
 
     def on_key(self, event):
-        print("textobjects:", self.number_textobjects)
         obj = self.text_objects[self.number_textobjects]
-
         if (event.state & 0x0004) and event.keysym.lower() == "h":
             self.start_homing(1)
         if (event.state & 0x0004) and event.keysym.lower() == "r":
