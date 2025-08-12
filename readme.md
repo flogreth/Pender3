@@ -6,3 +6,8 @@ The highlight: a small projector throws the text in exactly the right place so t
 
 https://github.com/user-attachments/assets/80e76856-10f3-4a94-aac6-b2c9275bfc37
 
+## custom icon font 
+
+as i couldn't find a quick and aesy way to implement svg import i made a simple script to draw my own wingdings-like svg font for icons. most of the icons are tinkertank related makerspace icons. So far i made an icon for every letter and every small and capital letter. So there's plenty more space for new icons.
+
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/7a7e70c5-a977-4710-88a2-d7f91d1ad013" />
